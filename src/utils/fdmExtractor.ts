@@ -518,10 +518,41 @@ export function generateResultExcel(results: ExtractionResult[]): XLSX.WorkBook 
     };
   }
 
-  // Set column widths
-  ws['!cols'] = headers.map(() => ({ wch: 25 }));
+// Set column widths
+ws['!cols'] = headers.map(() => ({ wch: 25 }));
 
-  // Create workbook
+// [NEW] Apply number format #,##0 to columns J to BC (rows 2 onwards)
+// Column J = index 10, Column BC = index 55
+const numFmt = '#,##0';
+for (let col = 10; col <= 55; col++) {
+  const colLetter = getColumnLetter(col);
+  for (let row = 2; row <= results.length + 1; row++) {
+    const cellAddr = `${colLetter}${row}`;
+    if (ws[cellAddr]) {
+      ws[cellAddr].z = numFmt;
+    }
+  }
+}
+
+// [NEW] HEADER DINAMIS SHEET 1 - Same as Python
+const headerUpdates: { [key: string]: string } = {
+  'V1': '="NJOP Bumi Berupa Pengembangan Tanah (Rp) (Kenaikan BIT "&\'2. Kesimpulan\'!$E$2*100&"%)"',
+  'AA1': '="NJOP BUMI (Rp) AREA PRODUKTIF pada A. DATA BUMI (Proyeksi NDT Naik "&\'2. Kesimpulan\'!$E$14*100&"%)"',
+  'AC1': '="NJOP BUMI (Rp) AREAL BELUM PRODUKTIF pada A. DATA BUMI (Proyeksi NDT Naik "&\'2. Kesimpulan\'!$E$14*100&"%)"',
+  'AG1': '="NJOP BUMI (Rp) AREAL TIDAK PRODUKTIF pada A. DATA BUMI (Proyeksi NDT Naik "&\'2. Kesimpulan\'!$E$14*100&"%)"',
+  'AK1': '="NJOP BUMI (Rp) AREAL PENGAMAN pada A. DATA BUMI (Proyeksi NDT Naik "&\'2. Kesimpulan\'!$E$14*100&"%)"',
+  'AO1': '="NJOP BUMI (Rp) AREAL EMPLASEMEN pada A. DATA BUMI (Proyeksi NDT Naik "&\'2. Kesimpulan\'!$E$14*100&"%)"',
+  'AX1': '="SIMULASI TOTAL NJOP (TANAH + BANGUNAN) 2026 (Hanya Kenaikan BIT "&\'2. Kesimpulan\'!$E$2*100&"% dan NDT Tetap)"',
+  'AY1': '="SIMULASI SPPT 2026 (Hanya Kenaikan BIT "&\'2. Kesimpulan\'!$E$2*100&"% dan NDT Tetap)"',
+  'BB1': '="SIMULASI TOTAL NJOP (TANAH + BANGUNAN) 2026 (Kenaikan BIT "&\'2. Kesimpulan\'!$E$2*100&"% + NDT "&\'2. Kesimpulan\'!$E$14*100&"%)"',
+  'BC1': '="SIMULASI SPPT 2026 (Kenaikan BIT "&\'2. Kesimpulan\'!$E$2*100&"% + NDT "&\'2. Kesimpulan\'!$E$14*100&"%)"'
+};
+
+for (const [cellAddr, formula] of Object.entries(headerUpdates)) {
+  ws[cellAddr] = { f: formula, t: 'n' };
+}
+  
+// Create workbook
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "1. Hasil");
 
@@ -533,12 +564,13 @@ export function generateResultExcel(results: ExtractionResult[]): XLSX.WorkBook 
     { wch: 60 }, { wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 }
   ];
 
-  // Add data to sheet 2
+  // Add data to sheet 2 with DYNAMIC FORMULAS (same as Python)
   const kesimpulanData = [
     { cell: "E1", value: "Skenario Kenaikan BIT" },
     { cell: "E2", value: 0.103 },
     { cell: "A1", value: "Poin" },
-    { cell: "B1", value: "Keterangan (BIT + 10.3% dan NDT Tetap)" },
+    // B1: Dynamic formula (same as Python)
+    { cell: "B1", value: { f: '"Keterangan (BIT + "&E2*100&"% dan NDT Tetap)"' } },
     { cell: "C1", value: "Nilai" },
     { cell: "D1", value: "Keterangan" },
     
@@ -559,7 +591,7 @@ export function generateResultExcel(results: ExtractionResult[]): XLSX.WorkBook 
     { cell: "C6", value: { f: "SUMIF('1. Hasil'!C2:C10000,\"Sektor Lainnya\",'1. Hasil'!AY2:AY10000)" } },
     
     { cell: "A7", value: "Simulasi Penerimaan PBB 2026 (Collection Rate 100%)" },
-    { cell: "B7", value: { f: "(COUNT('1. Hasil'!A2:A10000))&\" NOP\"" } },
+    { cell: "B7", value: { f: '(COUNT(\'1. Hasil\'!A2:A10000))&" NOP"' } },
     { cell: "C7", value: { f: "SUM(C2:C6)" } },
     { cell: "A8", value: "Target Penerimaan PBB 2026" },
     { cell: "C8", value: 110289165592 },
@@ -567,15 +599,18 @@ export function generateResultExcel(results: ExtractionResult[]): XLSX.WorkBook 
     { cell: "C9", value: { f: "C7-C8" } },
     { cell: "D9", value: { f: 'IF(C9>0,"Tercapai","Tidak Tercapai")' } },
     
-    { cell: "A10", value: "Simulasi Penerimaan PBB 2026 (Collection Rate 95%)" },
+    // A10: Dynamic formula (same as Python)
+    { cell: "A10", value: { f: '"Simulasi Penerimaan PBB 2026 (Collection Rate "&B10*100&"%)"' } },
     { cell: "B10", value: 0.95 },
     { cell: "C10", value: { f: "C7*B10" } },
-    { cell: "A11", value: "Selisih antara Simulasi (Collection Rate 95%) Target" },
+    // A11: Dynamic formula (same as Python)
+    { cell: "A11", value: { f: '"Selisih antara Simulasi (Collection Rate "&B10*100&"%)"&" Target"' } },
     { cell: "C11", value: { f: "C10-C8" } },
     { cell: "D11", value: { f: 'IF(C11>0,"Tercapai","Tidak Tercapai")' } },
     
     { cell: "A13", value: "Poin" },
-    { cell: "B13", value: "Keterangan (BIT + 10.3% dan NDT + 46%)" },
+    // B13: Dynamic formula (same as Python)
+    { cell: "B13", value: { f: '"Keterangan (BIT + "&E2*100&"% dan NDT + "&E14*100&"%)"' } },
     { cell: "C13", value: "Nilai" },
     { cell: "D13", value: "Keterangan" },
     { cell: "E13", value: "Skenario Kenaikan NDT" },
@@ -606,10 +641,12 @@ export function generateResultExcel(results: ExtractionResult[]): XLSX.WorkBook 
     { cell: "C21", value: { f: "C19-C20" } },
     { cell: "D21", value: { f: 'IF(C21>0,"Tercapai","Tidak Tercapai")' } },
     
-    { cell: "A22", value: "Simulasi Penerimaan PBB 2026 (Collection Rate 95%)" },
+    // A22: Dynamic formula (same as Python)
+    { cell: "A22", value: { f: '"Simulasi Penerimaan PBB 2026 (Collection Rate "&B22*100&"%)"' } },
     { cell: "B22", value: 0.95 },
     { cell: "C22", value: { f: "C19*B22" } },
-    { cell: "A23", value: "Selisih antara Simulasi (Collection Rate 95%) Target" },
+    // A23: Dynamic formula (same as Python)
+    { cell: "A23", value: { f: '"Selisih antara Simulasi (Collection Rate "&B22*100&"%)"&" Target"' } },
     { cell: "C23", value: { f: "C22-C20" } },
     { cell: "D23", value: { f: 'IF(C23>0,"Tercapai","Tidak Tercapai")' } }
   ];
